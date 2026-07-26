@@ -8,9 +8,23 @@
 </head>
 <body>
   <h1 id="title">Xin chào!</h1>
-  <div id="container">
-  <button id="btn">Click me</button>
+
+  <div class="inp">
+    <input
+      type="text"
+      id="name"
+      autocomplete="off"
+      placeholder=" "
+      class="form_input"
+    />
+    <label for="name">Hãy nhập tên của bạn</label>
   </div>
+
+  <div id="container">
+    <button id="btn">Click me</button>
+  </div>
+
+  <script type="module" src="firebase-init.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
