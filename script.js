@@ -1,5 +1,9 @@
+// ============================================
+// KHAI BÁO BIẾN
+// ============================================
 let clickedcnt = 0;
 let playerName = "";
+let hasSaved = false; // đảm bảo chỉ lưu Firebase đúng 1 lần / người chơi
 
 const title = document.getElementById("title");
 const container = document.getElementById("container");
@@ -7,19 +11,20 @@ const nameInput = document.getElementById("name");
 const nameWrapper = document.querySelector(".inp");
 const btn = document.getElementById("btn");
 
+// ============================================
+// NÚT "CLICK ME" CHÍNH
+// ============================================
 btn.addEventListener("click", () => {
-  // Lần đầu bấm "Click me" cũng chính là lúc lấy tên
   if (clickedcnt === 0) {
     playerName = nameInput.value.trim();
 
     if (playerName === "") {
-      alert("Bạn chưa nhập tên kìa!"); // popup mặc định của trình duyệt
-    nameInput.focus();
-    return;
+      alert("Bạn chưa nhập tên kìa!");
+      nameInput.focus();
+      return;
     }
 
     nameWrapper.style.display = "none";
-
   }
 
   clickedcnt++;
@@ -32,11 +37,15 @@ btn.addEventListener("click", () => {
     btn.textContent = "OK✔️";
   }
   if (clickedcnt == 3) {
-    title.textContent = `${playerName} MÀY BỊ GAY`;
+    title.textContent = `${playerName} MÀY BỊ GAY?`;
     btn.remove();
     createNew();
   }
 });
+
+// ============================================
+// TẠO 2 NÚT: "THỪA NHẬN" và "NÉ MÃI MÃI"
+// ============================================
 function createNew() {
   const btnNormal = document.createElement("button");
   btnNormal.id = "btnNormal";
@@ -48,22 +57,20 @@ function createNew() {
   btnRunaway.textContent = "TAO KO GAY. MÀY MỚI GAY!";
   container.appendChild(btnRunaway);
 
-  let escapeCount = 0; // đếm số lần né được, dùng để lưu vào Firebase
+  let escapeCount = 0; // số lần "cố gắng để không bị gay" (số lần hover/chạm hụt)
+  let hasEscaped = false;
 
-  // --- Bấm trúng nút bình thường = thua ngay, không kịp né ---
+  // --- Bấm btnNormal = THỪA NHẬN ---
   btnNormal.addEventListener("click", () => {
     title.textContent = "ĐÈO MẸ SỐC VẬY CU";
     btnNormal.remove();
     btnRunaway.remove();
     Shocked();
 
-    const deviceType = /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop";
-    saveVictim(playerName, escapeCount, true, deviceType);
+    recordResult(true); // caught = true → thừa nhận
   });
 
-  // --- Nút chạy trốn khi hover (desktop) ---
-  let hasEscaped = false;
-
+  // --- btnRunaway CHỈ NÉ, KHÔNG BAO GIỜ BẤM ĐƯỢC (desktop hover) ---
   btnRunaway.addEventListener("mouseover", () => {
     escapeCount++;
 
@@ -81,11 +88,12 @@ function createNew() {
     btnRunaway.style.left = randomX + "px";
     btnRunaway.style.top = randomY + "px";
   });
-  // --- Phần né cảm ứng (mobile) ---
-  document.addEventListener("touchmove", (e) => {
-    const touch = e.touches[0];
-    if (!btnRunaway.isConnected) return; // nút đã bị xóa thì bỏ qua
 
+  // --- Né cảm ứng (mobile) ---
+  document.addEventListener("touchmove", (e) => {
+    if (!btnRunaway.isConnected) return;
+
+    const touch = e.touches[0];
     const rect = btnRunaway.getBoundingClientRect();
     const btnCenterX = rect.left + rect.width / 2;
     const btnCenterY = rect.top + rect.height / 2;
@@ -107,7 +115,7 @@ function createNew() {
   });
 
   btnRunaway.addEventListener("touchstart", (e) => {
-    e.preventDefault();
+    e.preventDefault(); // chặn tap trúng, luôn né trước khi kịp chạm
     escapeCount++;
     if (!hasEscaped) {
       btnRunaway.style.position = "fixed";
@@ -119,8 +127,35 @@ function createNew() {
     btnRunaway.style.left = randomX + "px";
     btnRunaway.style.top = randomY + "px";
   });
+
+  // --- Nếu rời trang mà CHƯA từng bấm btnNormal = KHÔNG THỪA NHẬN ---
+  function handleLeave() {
+    if (!hasSaved && btnNormal.isConnected) {
+      recordResult(false); // caught = false → gay nhưng ko chịu thừa nhận
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      handleLeave();
+    }
+  });
+
+  window.addEventListener("beforeunload", handleLeave);
+
+  // --- Hàm dùng chung để lưu kết quả lên Firebase ---
+  function recordResult(admitted) {
+    if (hasSaved) return; // chặn lưu trùng lặp
+    hasSaved = true;
+
+    const deviceType = /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop";
+    saveVictim(playerName, escapeCount, admitted, deviceType);
+  }
 }
 
+// ============================================
+// GIF KHI THỪA NHẬN
+// ============================================
 function Shocked() {
   const img = document.createElement("img");
   img.src = "https://c.tenor.com/vWK04T5bh4kAAAAd/tenor.gif";
